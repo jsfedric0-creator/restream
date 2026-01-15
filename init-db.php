@@ -50,4 +50,50 @@ $alter_queries = [
         name VARCHAR(100) NOT NULL,
         rule_type ENUM('country', 'category', 'keyword', 'regex') NOT NULL,
         pattern VARCHAR(255) NOT NULL,
-       
+        action ENUM('add', 'ignore', 'prioritize') DEFAULT 'add',
+        priority INT DEFAULT 0,
+        is_active BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )"
+];
+
+foreach ($alter_queries as $query) {
+    try {
+        $db->exec($query);
+        echo "✓ Executed: " . substr($query, 0, 50) . "...\n";
+    } catch (Exception $e) {
+        echo "✗ Error: " . $e->getMessage() . "\n";
+    }
+}
+
+// Insert default M3U sources for Syria/Arab channels
+$m3u_sources = [
+    ['Arab IPTV', 'https://raw.githubusercontent.com/iptv-org/iptv/master/countries/sy.m3u'],
+    ['Middle East', 'https://raw.githubusercontent.com/iptv-org/iptv/master/countries/ae.m3u'],
+    ['Sports Arabic', 'https://raw.githubusercontent.com/iptv-org/iptv/master/categories/sports.m3u'],
+    ['News Arabic', 'https://raw.githubusercontent.com/iptv-org/iptv/master/categories/news.m3u'],
+    ['Entertainment', 'https://raw.githubusercontent.com/iptv-org/iptv/master/categories/entertainment.m3u']
+];
+
+$stmt = $db->prepare("INSERT IGNORE INTO m3u_sources (name, url) VALUES (?, ?)");
+foreach ($m3u_sources as $source) {
+    $stmt->execute($source);
+}
+
+// Insert auto rules
+$rules = [
+    ['Syria Channels', 'country', 'SY', 'prioritize', 100],
+    ['Arabic News', 'keyword', 'news', 'add', 90],
+    ['Sports Arabic', 'keyword', 'sports', 'add', 80],
+    ['Quran Islamic', 'keyword', 'quran', 'add', 70],
+    ['Movies Arabic', 'keyword', 'movie', 'add', 60],
+    ['Kids Arabic', 'keyword', 'kids', 'add', 50]
+];
+
+$stmt = $db->prepare("INSERT IGNORE INTO auto_rules (name, rule_type, pattern, action, priority) VALUES (?, ?, ?, ?, ?)");
+foreach ($rules as $rule) {
+    $stmt->execute($rule);
+}
+
+echo "\n✅ Database setup complete for auto management!\n";
+?>
